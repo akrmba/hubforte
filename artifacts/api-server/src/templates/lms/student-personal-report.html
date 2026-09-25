@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Impact Report — {{STUDENT_NAME}}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; background: #fff; font-size: 13px; }
+  .page { max-width: 794px; margin: 0 auto; padding: 40px 48px; }
+  .cover { min-height: 297mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); color: #fff; border-radius: 4px; padding: 60px 40px; }
+  .cover .logo { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.6; margin-bottom: 48px; }
+  .cover h1 { font-size: 36px; font-weight: 700; line-height: 1.2; margin-bottom: 16px; }
+  .cover .subtitle { font-size: 16px; opacity: 0.8; margin-bottom: 48px; }
+  .cover .meta { font-size: 12px; opacity: 0.5; }
+  .section { margin-top: 40px; }
+  .section-title { font-size: 18px; font-weight: 700; color: #0f3460; border-bottom: 2px solid #e8b84b; padding-bottom: 8px; margin-bottom: 20px; }
+  .highlight-box { background: #fdf8ec; border-left: 4px solid #e8b84b; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-bottom: 16px; }
+  .highlight-box p { line-height: 1.7; color: #333; }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #f8f9fa; border-radius: 8px; padding: 16px; text-align: center; }
+  .stat-card .val { font-size: 28px; font-weight: 700; color: #0f3460; }
+  .stat-card .lbl { font-size: 11px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .talent-table { width: 100%; border-collapse: collapse; }
+  .talent-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; padding: 8px 12px; border-bottom: 1px solid #eee; }
+  .talent-table td { padding: 10px 12px; border-bottom: 1px solid #f5f5f5; }
+  .talent-table td:first-child { font-weight: 600; }
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar { height: 8px; border-radius: 4px; min-width: 4px; }
+  .bar.positive { background: #22c55e; }
+  .bar.negative { background: #ef4444; }
+  .bar-val { font-size: 12px; font-weight: 600; color: #333; white-space: nowrap; }
+  .na { color: #aaa; font-size: 12px; }
+  .talents-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .talent-chip { background: #e8b84b; color: #1a1a1a; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11px; color: #aaa; text-align: center; }
+  @media print { .page { padding: 20px 32px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="logo">Yes Futures</div>
+    <h1>{{STUDENT_NAME}}</h1>
+    <div class="subtitle">Your Personal Impact Report</div>
+    <div class="meta">{{COHORT_NAME}} &nbsp;·&nbsp; Year {{YEAR_GROUP}}</div>
+  </div>
+
+  <!-- Attendance -->
+  <div class="section">
+    <div class="section-title">Your Journey</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="val">{{ATTENDANCE_ATTENDED}}</div>
+        <div class="lbl">Sessions Attended</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">{{ATTENDANCE_PCT}}%</div>
+        <div class="lbl">Attendance Rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">{{ATTENDANCE_TOTAL}}</div>
+        <div class="lbl">Total Sessions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chosen Talents -->
+  <div class="section">
+    <div class="section-title">Your Chosen Talents</div>
+    <div class="talents-list">
+      {{CHOSEN_TALENTS}}
+    </div>
+  </div>
+
+  <!-- Impact Scores -->
+  <div class="section">
+    <div class="section-title">Your Growth</div>
+    <table class="talent-table">
+      <thead>
+        <tr>
+          <th>Talent</th>
+          <th>Improvement</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Confidence</td><td>{{CONFIDENCE_BAR}}</td></tr>
+        <tr><td>Resilience</td><td>{{RESILIENCE_BAR}}</td></tr>
+        <tr><td>Communication</td><td>{{COMMUNICATION_BAR}}</td></tr>
+        <tr><td>Self-Awareness</td><td>{{SELF_AWARENESS_BAR}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Student Voice -->
+  <div class="section">
+    <div class="section-title">Your Story</div>
+    <div class="highlight-box">
+      <p>{{STUDENT_VOICE_SUMMARY}}</p>
+    </div>
+  </div>
+
+  <!-- Teacher Reflection -->
+  <div class="section">
+    <div class="section-title">Your Teacher's Perspective</div>
+    <div class="highlight-box">
+      <p>{{TEACHER_REFLECTION}}</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    Report prepared by {{LEAD_TEACHER}} &nbsp;·&nbsp; Yes Futures &nbsp;·&nbsp; {{COHORT_NAME}}
+  </div>
+
+</div>
+</body>
+</html>

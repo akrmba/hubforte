@@ -1,0 +1,1906 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Relationship CRM API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: organizations
+    description: Organization management
+  - name: contacts
+    description: Contact management
+  - name: tasks
+    description: Task management
+  - name: activities
+    description: Activity management
+  - name: notes
+    description: Notes management
+  - name: templates
+    description: Email templates
+  - name: campaigns
+    description: Campaign management
+  - name: outreach
+    description: Outreach operations
+  - name: import
+    description: Data import
+  - name: export
+    description: Data export
+  - name: dashboard
+    description: Dashboard stats
+  - name: admin
+    description: Admin operations
+  - name: gmail
+    description: Gmail integration
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/gmail:
+    get:
+      operationId: getGmailAuthUrl
+      tags: [auth, gmail]
+      summary: Get Gmail OAuth URL
+      responses:
+        "200":
+          description: Gmail OAuth URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailAuthUrl"
+
+  /auth/gmail/disconnect:
+    post:
+      operationId: disconnectGmail
+      tags: [auth, gmail]
+      summary: Disconnect Gmail
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/gmail/status:
+    get:
+      operationId: getGmailStatus
+      tags: [auth, gmail]
+      summary: Get Gmail connection status
+      responses:
+        "200":
+          description: Gmail status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmailStatus"
+
+  /organizations:
+    get:
+      operationId: listOrganizations
+      tags: [organizations]
+      summary: List organizations
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationListResponse"
+    post:
+      operationId: createOrganization
+      tags: [organizations]
+      summary: Create organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
+  /organizations/{id}:
+    get:
+      operationId: getOrganization
+      tags: [organizations]
+      summary: Get organization by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Organization detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateOrganization
+      tags: [organizations]
+      summary: Update organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+    delete:
+      operationId: deleteOrganization
+      tags: [organizations]
+      summary: Delete (deactivate) organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /contacts:
+    get:
+      operationId: listContacts
+      tags: [contacts]
+      summary: List contacts
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactListResponse"
+    post:
+      operationId: createContact
+      tags: [contacts]
+      summary: Create contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContactBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "409":
+          description: Duplicate email
+
+  /contacts/{id}:
+    get:
+      operationId: getContact
+      tags: [contacts]
+      summary: Get contact by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Contact detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateContact
+      tags: [contacts]
+      summary: Update contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+    delete:
+      operationId: deleteContact
+      tags: [contacts]
+      summary: Delete (deactivate) contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: priority
+          in: query
+          schema:
+            type: string
+        - name: ownerId
+          in: query
+          schema:
+            type: string
+        - name: contactId
+          in: query
+          schema:
+            type: string
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+        - name: dueBefore
+          in: query
+          schema:
+            type: string
+        - name: dueAfter
+          in: query
+          schema:
+            type: string
+        - name: mine
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      summary: List activities
+      parameters:
+        - name: contactId
+          in: query
+          schema:
+            type: string
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+    post:
+      operationId: createActivity
+      tags: [activities]
+      summary: Create activity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+
+  /notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: List notes
+      parameters:
+        - name: contactId
+          in: query
+          schema:
+            type: string
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Create note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notes/{id}:
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /templates:
+    get:
+      operationId: listTemplates
+      tags: [templates]
+      summary: List email templates
+      responses:
+        "200":
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmailTemplate"
+    post:
+      operationId: createTemplate
+      tags: [templates]
+      summary: Create email template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplateBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailTemplate"
+
+  /templates/{id}:
+    get:
+      operationId: getTemplate
+      tags: [templates]
+      summary: Get template by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Template detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailTemplate"
+    patch:
+      operationId: updateTemplate
+      tags: [templates]
+      summary: Update template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTemplateBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailTemplate"
+    delete:
+      operationId: deleteTemplate
+      tags: [templates]
+      summary: Delete template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List campaigns
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      summary: Create campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCampaignBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get campaign by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Campaign detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignDetail"
+
+  /campaigns/{id}/send:
+    post:
+      operationId: sendCampaign
+      tags: [campaigns]
+      summary: Send or schedule campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendCampaignBody"
+      responses:
+        "200":
+          description: Campaign queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}/pause:
+    post:
+      operationId: pauseCampaign
+      tags: [campaigns]
+      summary: Pause campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Campaign paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}/results:
+    get:
+      operationId: getCampaignResults
+      tags: [campaigns]
+      summary: Get campaign results
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Campaign results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CampaignResult"
+
+  /outreach/send:
+    post:
+      operationId: sendEmail
+      tags: [outreach]
+      summary: Send single email to contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendEmailBody"
+      responses:
+        "200":
+          description: Email sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendEmailResponse"
+
+  /import/validate:
+    post:
+      operationId: validateImport
+      tags: [import]
+      summary: Validate import data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateImportBody"
+      responses:
+        "200":
+          description: Validation results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateImportResponse"
+
+  /import/contacts:
+    post:
+      operationId: importContacts
+      tags: [import]
+      summary: Import contacts from CSV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportBody"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+
+  /import/organizations:
+    post:
+      operationId: importOrganizations
+      tags: [import]
+      summary: Import organizations from CSV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportBody"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+
+  /export/contacts:
+    get:
+      operationId: exportContacts
+      tags: [export]
+      summary: Export contacts as CSV
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /export/organizations:
+    get:
+      operationId: exportOrganizations
+      tags: [export]
+      summary: Export organizations as CSV
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/activity:
+    get:
+      operationId: getDashboardActivity
+      tags: [dashboard]
+      summary: Get recent activity for dashboard
+      responses:
+        "200":
+          description: Recent activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+
+  /dashboard/tasks-due:
+    get:
+      operationId: getDashboardTasksDue
+      tags: [dashboard]
+      summary: Get tasks due soon
+      responses:
+        "200":
+          description: Tasks due soon
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
+  /admin/users:
+    get:
+      operationId: listUsers
+      tags: [admin]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserWithMeta"
+
+  /admin/users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [admin]
+      summary: Update user role or status (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/error-logs:
+    get:
+      operationId: listErrorLogs
+      tags: [admin]
+      summary: Get recent error logs (admin only)
+      responses:
+        "200":
+          description: Error logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErrorLog"
+
+  /worker/process-campaign:
+    post:
+      operationId: processCampaign
+      tags: [campaigns]
+      summary: Process campaign (worker only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessCampaignBody"
+      responses:
+        "200":
+          description: Processing result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessCampaignResult"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        db:
+          type: string
+        timestamp:
+          type: string
+        version:
+          type: string
+      required:
+        - status
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: ["string", "null"]
+      required:
+        - success
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    GmailAuthUrl:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    GmailStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        email:
+          type: ["string", "null"]
+      required:
+        - connected
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        role:
+          type: string
+        active:
+          type: boolean
+        image:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - role
+        - active
+
+    UserWithMeta:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            sessionCount:
+              type: integer
+            lastLoginAt:
+              type: ["string", "null"]
+              format: date-time
+          required:
+            - sessionCount
+
+    UpdateUserBody:
+      type: object
+      properties:
+        role:
+          type: string
+        active:
+          type: boolean
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        location:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        ownerId:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        contactCount:
+          type: integer
+        lastActivityAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - type
+        - status
+        - ownerId
+        - contactCount
+        - createdAt
+        - updatedAt
+
+    OrganizationListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Organization"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - totalPages
+
+    OrganizationDetail:
+      allOf:
+        - $ref: "#/components/schemas/Organization"
+        - type: object
+          properties:
+            contacts:
+              type: array
+              items:
+                $ref: "#/components/schemas/Contact"
+            activities:
+              type: array
+              items:
+                $ref: "#/components/schemas/Activity"
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/Task"
+          required:
+            - contacts
+            - activities
+            - tasks
+
+    CreateOrganizationBody:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        location:
+          type: string
+        notes:
+          type: string
+        ownerId:
+          type: string
+      required:
+        - name
+        - type
+
+    UpdateOrganizationBody:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        location:
+          type: string
+        notes:
+          type: string
+        ownerId:
+          type: string
+
+    Contact:
+      type: object
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: ["string", "null"]
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        status:
+          type: string
+        lastContactedAt:
+          type: ["string", "null"]
+          format: date-time
+        organizationId:
+          type: string
+        organizationName:
+          type: ["string", "null"]
+        ownerId:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - firstName
+        - lastName
+        - email
+        - status
+        - organizationId
+        - ownerId
+        - createdAt
+        - updatedAt
+
+    ContactListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contact"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - totalPages
+
+    ContactDetail:
+      allOf:
+        - $ref: "#/components/schemas/Contact"
+        - type: object
+          properties:
+            activities:
+              type: array
+              items:
+                $ref: "#/components/schemas/Activity"
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/Task"
+            notes:
+              type: array
+              items:
+                $ref: "#/components/schemas/Note"
+          required:
+            - activities
+            - tasks
+            - notes
+
+    CreateContactBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        organizationId:
+          type: string
+        ownerId:
+          type: string
+      required:
+        - firstName
+        - lastName
+        - email
+        - organizationId
+
+    UpdateContactBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        organizationId:
+          type: string
+        ownerId:
+          type: string
+        lastContactedAt:
+          type: string
+          format: date-time
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        dueDate:
+          type: string
+          format: date-time
+        priority:
+          type: string
+        status:
+          type: string
+        ownerId:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        contactId:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        organizationId:
+          type: ["string", "null"]
+        organizationName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - dueDate
+        - priority
+        - status
+        - ownerId
+        - createdAt
+        - updatedAt
+
+    CreateTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+        priority:
+          type: string
+        status:
+          type: string
+        ownerId:
+          type: string
+        contactId:
+          type: string
+        organizationId:
+          type: string
+      required:
+        - title
+        - dueDate
+
+    UpdateTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+        priority:
+          type: string
+        status:
+          type: string
+        ownerId:
+          type: string
+        contactId:
+          type: string
+        organizationId:
+          type: string
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        summary:
+          type: string
+        date:
+          type: string
+          format: date-time
+        contactId:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        organizationId:
+          type: ["string", "null"]
+        organizationName:
+          type: ["string", "null"]
+        userId:
+          type: string
+        userName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - summary
+        - date
+        - userId
+        - createdAt
+
+    CreateActivityBody:
+      type: object
+      properties:
+        type:
+          type: string
+        summary:
+          type: string
+        date:
+          type: string
+          format: date-time
+        contactId:
+          type: string
+        organizationId:
+          type: string
+      required:
+        - type
+        - summary
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        authorId:
+          type: string
+        authorName:
+          type: ["string", "null"]
+        contactId:
+          type: ["string", "null"]
+        organizationId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - content
+        - authorId
+        - createdAt
+
+    CreateNoteBody:
+      type: object
+      properties:
+        content:
+          type: string
+        contactId:
+          type: string
+        organizationId:
+          type: string
+      required:
+        - content
+
+    EmailTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        variables:
+          type: array
+          items:
+            type: string
+        ownerId:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - subject
+        - body
+        - variables
+        - ownerId
+        - createdAt
+        - updatedAt
+
+    CreateTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+      required:
+        - name
+        - subject
+        - body
+
+    UpdateTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subject:
+          type: string
+        bodyTemplate:
+          type: string
+        status:
+          type: string
+        scheduledAt:
+          type: ["string", "null"]
+          format: date-time
+        ownerId:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        contactCount:
+          type: integer
+        sentCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - subject
+        - bodyTemplate
+        - status
+        - ownerId
+        - contactCount
+        - sentCount
+        - createdAt
+        - updatedAt
+
+    CampaignDetail:
+      allOf:
+        - $ref: "#/components/schemas/Campaign"
+        - type: object
+          properties:
+            campaignContacts:
+              type: array
+              items:
+                $ref: "#/components/schemas/CampaignResult"
+          required:
+            - campaignContacts
+
+    CreateCampaignBody:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        bodyTemplate:
+          type: string
+        contactIds:
+          type: array
+          items:
+            type: string
+        scheduledAt:
+          type: string
+          format: date-time
+      required:
+        - name
+        - subject
+        - bodyTemplate
+        - contactIds
+
+    SendCampaignBody:
+      type: object
+      properties:
+        scheduledAt:
+          type: string
+          format: date-time
+
+    CampaignResult:
+      type: object
+      properties:
+        id:
+          type: string
+        campaignId:
+          type: string
+        contactId:
+          type: string
+        contactName:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        status:
+          type: string
+        sentAt:
+          type: ["string", "null"]
+          format: date-time
+        error:
+          type: ["string", "null"]
+      required:
+        - id
+        - campaignId
+        - contactId
+        - status
+
+    SendEmailBody:
+      type: object
+      properties:
+        contactId:
+          type: string
+        to:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        templateId:
+          type: string
+      required:
+        - contactId
+        - to
+        - subject
+        - body
+
+    SendEmailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        messageId:
+          type: string
+      required:
+        - success
+
+    ValidateImportBody:
+      type: object
+      properties:
+        type:
+          type: string
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        mappings:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - type
+        - rows
+        - mappings
+
+    ValidateImportResponse:
+      type: object
+      properties:
+        valid:
+          type: integer
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportError"
+      required:
+        - valid
+        - errors
+
+    ImportError:
+      type: object
+      properties:
+        row:
+          type: integer
+        field:
+          type: string
+        message:
+          type: string
+      required:
+        - row
+        - field
+        - message
+
+    ImportBody:
+      type: object
+      properties:
+        type:
+          type: string
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        mappings:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - type
+        - rows
+        - mappings
+
+    ImportResult:
+      type: object
+      properties:
+        created:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: integer
+      required:
+        - created
+        - skipped
+        - errors
+
+    DashboardStats:
+      type: object
+      properties:
+        totalOrganizations:
+          type: integer
+        totalContacts:
+          type: integer
+        tasksDueToday:
+          type: integer
+        emailsSentThisWeek:
+          type: integer
+      required:
+        - totalOrganizations
+        - totalContacts
+        - tasksDueToday
+        - emailsSentThisWeek
+
+    ProcessCampaignBody:
+      type: object
+      properties:
+        campaignId:
+          type: string
+      required:
+        - campaignId
+
+    ProcessCampaignResult:
+      type: object
+      properties:
+        processed:
+          type: integer
+        sent:
+          type: integer
+        failed:
+          type: integer
+      required:
+        - processed
+        - sent
+        - failed
+
+    ErrorLog:
+      type: object
+      properties:
+        id:
+          type: string
+        level:
+          type: string
+        message:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - level
+        - message
+        - createdAt

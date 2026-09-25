@@ -1,0 +1,85 @@
+-- DOWN MIGRATION: Remove all data migrated from yf_* tables into unified tables
+-- AND reverse schema additions from 0003_yf_data_migration.sql
+-- Legacy yf_* tables are NOT touched — they were never modified by the up migration.
+
+-- ---------------------------------------------------------------------------
+-- Step 1: Delete migrated data (reverse dependency order)
+-- ---------------------------------------------------------------------------
+DELETE FROM activities WHERE source_table = 'yf_activities';
+DELETE FROM placements WHERE source_table = 'yf_placements';
+DELETE FROM students WHERE source_table = 'yf_students';
+DELETE FROM volunteers WHERE source_table = 'yf_volunteers';
+DELETE FROM programmes WHERE source_table = 'yf_programmes';
+DELETE FROM opportunities WHERE source_table = 'yf_funding_opportunities';
+DELETE FROM contacts WHERE source_table = 'yf_contacts';
+DELETE FROM funders WHERE id IN (SELECT id FROM yf_sponsors);
+DELETE FROM organizations WHERE source_table IN ('yf_sponsors', 'yf_schools', 'yf_trusts');
+
+-- ---------------------------------------------------------------------------
+-- Step 2: Drop tables created by this migration
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS placements;
+DROP TABLE IF EXISTS students;
+DROP TABLE IF EXISTS programmes;
+
+-- ---------------------------------------------------------------------------
+-- Step 3: Drop columns added by this migration
+-- ---------------------------------------------------------------------------
+-- organizations
+ALTER TABLE organizations DROP COLUMN IF EXISTS source_table;
+ALTER TABLE organizations DROP COLUMN IF EXISTS source_id;
+ALTER TABLE organizations DROP COLUMN IF EXISTS created_by;
+ALTER TABLE organizations DROP COLUMN IF EXISTS parent_org_id;
+ALTER TABLE organizations DROP COLUMN IF EXISTS metadata;
+ALTER TABLE organizations DROP COLUMN IF EXISTS relationship_status;
+ALTER TABLE organizations DROP COLUMN IF EXISTS email;
+ALTER TABLE organizations DROP COLUMN IF EXISTS region;
+ALTER TABLE organizations DROP COLUMN IF EXISTS postcode;
+ALTER TABLE organizations DROP COLUMN IF EXISTS address;
+ALTER TABLE organizations DROP COLUMN IF EXISTS phone;
+ALTER TABLE organizations DROP COLUMN IF EXISTS website;
+
+-- contacts
+ALTER TABLE contacts DROP COLUMN IF EXISTS source_table;
+ALTER TABLE contacts DROP COLUMN IF EXISTS source_id;
+ALTER TABLE contacts DROP COLUMN IF EXISTS created_by;
+ALTER TABLE contacts DROP COLUMN IF EXISTS metadata;
+ALTER TABLE contacts DROP COLUMN IF EXISTS preferred_contact_method;
+ALTER TABLE contacts DROP COLUMN IF EXISTS department;
+ALTER TABLE contacts DROP COLUMN IF EXISTS title;
+
+-- opportunities
+ALTER TABLE opportunities DROP COLUMN IF EXISTS source_table;
+ALTER TABLE opportunities DROP COLUMN IF EXISTS source_id;
+ALTER TABLE opportunities DROP COLUMN IF EXISTS created_by;
+ALTER TABLE opportunities DROP COLUMN IF EXISTS metadata;
+ALTER TABLE opportunities DROP COLUMN IF EXISTS opportunity_type;
+
+-- activities
+ALTER TABLE activities DROP COLUMN IF EXISTS source_table;
+ALTER TABLE activities DROP COLUMN IF EXISTS source_id;
+ALTER TABLE activities DROP COLUMN IF EXISTS created_by;
+ALTER TABLE activities DROP COLUMN IF EXISTS metadata;
+ALTER TABLE activities DROP COLUMN IF EXISTS programme_id;
+ALTER TABLE activities DROP COLUMN IF EXISTS student_id;
+ALTER TABLE activities DROP COLUMN IF EXISTS volunteer_id;
+ALTER TABLE activities DROP COLUMN IF EXISTS next_action_date;
+ALTER TABLE activities DROP COLUMN IF EXISTS next_action;
+ALTER TABLE activities DROP COLUMN IF EXISTS notes;
+ALTER TABLE activities DROP COLUMN IF EXISTS subject;
+
+-- volunteers
+ALTER TABLE volunteers DROP COLUMN IF EXISTS source_table;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS source_id;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS created_by;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS metadata;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS status;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS organization_id;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS phone;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS email;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS last_name;
+ALTER TABLE volunteers DROP COLUMN IF EXISTS first_name;
+
+-- funders
+ALTER TABLE funders DROP COLUMN IF EXISTS source_table;
+ALTER TABLE funders DROP COLUMN IF EXISTS source_id;

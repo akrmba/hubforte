@@ -1,0 +1,85 @@
+# docker-compose.prod.yml — PRODUCTION
+# All secrets come from environment variables — never from checked-in .env files.
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+services:
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY}/hubforte-api:${IMAGE_TAG:-latest}
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      WORKER_SECRET: ${WORKER_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      SEED_PASSWORD: ${SEED_PASSWORD}
+      FRONTEND_URL: ${FRONTEND_URL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      PORT: "3000"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      EMERGENCY_ACTIVATION_TOKEN: ${EMERGENCY_ACTIVATION_TOKEN}
+      # Gmail OAuth
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
+      GMAIL_REDIRECT_URI: ${GMAIL_REDIRECT_URI}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
+      # AI — system (owner/platform workflows)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      AI_DEFAULT_PROVIDER: ${AI_DEFAULT_PROVIDER:-anthropic}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-claude-sonnet-4-6}
+      # AI — client-facing features
+      DEFAULT_CLIENT_AI_PROVIDER: ${DEFAULT_CLIENT_AI_PROVIDER:-openrouter}
+      DEFAULT_CLIENT_AI_MODEL: ${DEFAULT_CLIENT_AI_MODEL:-deepseek/deepseek-chat}
+      # Incident alerting
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      STATUS_PAGE_API_KEY: ${STATUS_PAGE_API_KEY}
+      STATUS_PAGE_ID: ${STATUS_PAGE_ID}
+      STATUS_PAGE_URL: ${STATUS_PAGE_URL}
+      SEND_CLIENT_INCIDENT_EMAILS: ${SEND_CLIENT_INCIDENT_EMAILS:-false}
+      # Integrations
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY}
+      # Instatus
+      INSTATUS_API_KEY: ${INSTATUS_API_KEY}
+      INSTATUS_PAGE_ID: ${INSTATUS_PAGE_ID}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  crm:
+    image: ghcr.io/${GITHUB_REPOSITORY}/hubforte-crm:${IMAGE_TAG:-latest}
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  lms:
+    image: ghcr.io/${GITHUB_REPOSITORY}/hubforte-lms:${IMAGE_TAG:-latest}
+    ports:
+      - "5174:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/${GITHUB_REPOSITORY}/hubforte-worker:${IMAGE_TAG:-latest}
+    environment:
+      NODE_ENV: production
+      APP_URL: ${APP_URL:-http://api:3000}
+      WORKER_SECRET: ${WORKER_SECRET}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Impact Report — {{COHORT_NAME}}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; background: #fff; font-size: 13px; }
+  .page { max-width: 794px; margin: 0 auto; padding: 40px 48px; }
+  .cover { background: linear-gradient(135deg, #0f3460 0%, #16213e 100%); color: #fff; padding: 60px 48px; border-radius: 4px; margin-bottom: 40px; }
+  .cover .org { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.6; margin-bottom: 24px; }
+  .cover h1 { font-size: 32px; font-weight: 700; line-height: 1.2; margin-bottom: 8px; }
+  .cover .sub { font-size: 15px; opacity: 0.75; margin-bottom: 32px; }
+  .cover .meta { font-size: 12px; opacity: 0.5; }
+  .section { margin-top: 36px; }
+  .section-title { font-size: 17px; font-weight: 700; color: #0f3460; border-bottom: 2px solid #e8b84b; padding-bottom: 8px; margin-bottom: 18px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #f8f9fa; border-radius: 8px; padding: 14px; text-align: center; }
+  .stat-card .val { font-size: 26px; font-weight: 700; color: #0f3460; }
+  .stat-card .lbl { font-size: 10px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .impact-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+  .impact-card { background: #f0fdf4; border-radius: 8px; padding: 14px; }
+  .impact-card .talent { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 4px; }
+  .impact-card .score { font-size: 24px; font-weight: 700; color: #16a34a; }
+  .impact-card .score.negative { color: #dc2626; }
+  .narrative-box { background: #fdf8ec; border-left: 4px solid #e8b84b; padding: 14px 18px; border-radius: 0 8px 8px 0; margin-bottom: 14px; }
+  .narrative-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 6px; }
+  .narrative-box p { line-height: 1.7; color: #333; }
+  .student-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .student-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #666; padding: 8px 10px; border-bottom: 2px solid #eee; background: #f8f9fa; }
+  .student-table td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; }
+  .student-table tr:hover td { background: #fafafa; }
+  .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11px; color: #aaa; text-align: center; }
+  @media print { .page { padding: 20px 32px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="org">Yes Futures — School Impact Report</div>
+    <h1>{{COHORT_NAME}}</h1>
+    <div class="sub">{{PROGRAMME_TYPE}}</div>
+    <div class="meta">Lead Teacher: {{LEAD_TEACHER}}</div>
+  </div>
+
+  <!-- Executive Summary Stats -->
+  <div class="section">
+    <div class="section-title">Executive Summary</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="val">{{TOTAL_STUDENTS}}</div>
+        <div class="lbl">Total Students</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">{{ELIGIBLE_STUDENTS}}</div>
+        <div class="lbl">Eligible</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">{{EXCLUDED_STUDENTS}}</div>
+        <div class="lbl">Excluded</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">{{AVG_ATTENDANCE_PCT}}%</div>
+        <div class="lbl">Avg Attendance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Impact Data -->
+  <div class="section">
+    <div class="section-title">Average Score Improvements</div>
+    <div class="impact-grid">
+      <div class="impact-card">
+        <div class="talent">Confidence</div>
+        <div class="score">{{CONFIDENCE_IMP}}</div>
+      </div>
+      <div class="impact-card">
+        <div class="talent">Resilience</div>
+        <div class="score">{{RESILIENCE_IMP}}</div>
+      </div>
+      <div class="impact-card">
+        <div class="talent">Communication</div>
+        <div class="score">{{COMMUNICATION_IMP}}</div>
+      </div>
+      <div class="impact-card">
+        <div class="talent">Self-Awareness</div>
+        <div class="score">{{SELF_AWARENESS_IMP}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Narratives -->
+  <div class="section">
+    <div class="section-title">Programme Narratives</div>
+    <div class="narrative-box">
+      <div class="label">Student Voice</div>
+      <p>{{COHORT_STUDENT_VOICE}}</p>
+    </div>
+    <div class="narrative-box">
+      <div class="label">Coach Summary</div>
+      <p>{{COHORT_COACH_SUMMARY}}</p>
+    </div>
+    <div class="narrative-box">
+      <div class="label">Teacher Perspective</div>
+      <p>{{COHORT_TEACHER_SUMMARY}}</p>
+    </div>
+  </div>
+
+  <!-- Student Data Table -->
+  <div class="section">
+    <div class="section-title">Student Data</div>
+    <table class="student-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Year</th>
+          <th>Attendance</th>
+          <th>Confidence</th>
+          <th>Resilience</th>
+          <th>Communication</th>
+          <th>Self-Awareness</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{STUDENT_ROWS}}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    Yes Futures &nbsp;·&nbsp; {{COHORT_NAME}} &nbsp;·&nbsp; Confidential
+  </div>
+
+</div>
+</body>
+</html>

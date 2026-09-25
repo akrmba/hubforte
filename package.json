@@ -1,0 +1,33 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter api-server dev\" \"pnpm --filter crm dev\" \"pnpm --filter @workspace/lms dev\"",
+    "build": "pnpm -r --if-present run build",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "db:push": "echo 'ERROR: drizzle-kit push is blocked. Use SQL migration files. See docs/SCHEMA_SOURCE_OF_TRUTH.md' && exit 1",
+    "db:studio": "pnpm --filter @workspace/db run studio",
+    "seed": "pnpm --filter @workspace/scripts run seed",
+    "test:smoke": "vitest run --config vitest.config.ts",
+    "test:smoke:health": "vitest run --config vitest.config.ts tests/smoke/health.test.ts",
+    "test:smoke:auth": "vitest run --config vitest.config.ts tests/smoke/auth.test.ts",
+    "test:smoke:contacts": "vitest run --config vitest.config.ts tests/smoke/contacts.test.ts",
+    "test:smoke:lms": "vitest run --config vitest.config.ts tests/smoke/lms.test.ts",
+    "test:smoke:lms03": "vitest run --config vitest.config.ts tests/smoke/lms-round03.test.ts",
+    "test:recovery": "node scripts/run-git-bash.mjs tests/recovery/backup-restore.test.sh"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.0",
+    "concurrently": "^9.0.0",
+    "vitest": "^3.2.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["puppeteer"],
+    "overrides": {
+      "esbuild": "^0.25.0",
+      "uuid": "^14.0.0"
+    }
+  }
+}

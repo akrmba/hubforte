@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+for candidate in \
+  "/d/Installs/PostgreSQL/16/bin/psql.exe" \
+  "/mnt/d/Installs/PostgreSQL/16/bin/psql.exe" \
+  "/c/Program Files/PostgreSQL/16/bin/psql.exe" \
+  "/mnt/c/Program Files/PostgreSQL/16/bin/psql.exe"
+do
+  if [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+echo "Error: could not locate psql.exe" >&2
+exit 1

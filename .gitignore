@@ -1,0 +1,129 @@
+# ============================================================
+# SECURITY — NEVER COMMIT THESE
+# ============================================================
+.env
+.env.*
+!.env.example
+!.env.production.example
+**/.env
+**/.env.*
+!**/.env.example
+lib/db/.env
+gmail-credentials.json
+*.pem
+wallet/
+*.key
+*.cert
+
+# ============================================================
+# Build outputs
+# ============================================================
+**/dist/
+**/build/
+**/.cache/
+**/tsconfig.tsbuildinfo
+tmp
+out-tsc
+.expo
+.expo-shared
+
+# ============================================================
+# Dependencies
+# ============================================================
+node_modules/
+**/node_modules/
+
+# ============================================================
+# Editor/IDE internal files
+# ============================================================
+**/.replit-artifact/
+**/.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+
+# ============================================================
+# Old/temp files
+# ============================================================
+not_required_1904_12pm/
+**/tmp-*.pdf
+**/tmp-*.html
+uploads/
+
+# ============================================================
+# Logs (never commit logs)
+# ============================================================
+*.log
+**/backups.log
+logs/
+
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# Replit
+# ============================================================
+.cache/
+.local/
+
+# ============================================================
+# Misc
+# ============================================================
+/.sass-cache
+/connect.lock
+/coverage
+/typings
+!.env.*.example
+**/settings.local.json
+*.p12
+*.pfx
+*.crt
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.zip
+*.timestamp-*
+*.tsbuildinfo
+*.csv
+*.xlsx
+*.xls
+.next/
+.turbo/
+coverage/
+target/
+.venv/
+__pycache__/
+.claude/
+.codex/
+.kilocode/
+.pnpm-store/
+tmp/
+.tmp/
+temp files/
+attached_assets/
+vendor/
+.playwright-mcp/
+proposal_claude/
+.github/hooks/
+.github/workflows/deploy*.yml
+.github/workflows/rollback*.yml
+CLAUDE.md
+claude_codex*
+proposal_codex*
+check_files.md
+/idea.pdf
+/tests/recovery/last-run/

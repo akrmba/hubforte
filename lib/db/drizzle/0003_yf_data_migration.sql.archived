@@ -1,0 +1,755 @@
+-- Migration: Migrate all yf_* legacy data into unified tables
+-- Part A: Add missing columns/tables to unified schema
+-- Part B: Copy data from legacy yf_* tables into unified tables
+-- Legacy tables are NOT dropped — they remain as backup until validated.
+-- This migration is idempotent: safe to run multiple times without duplicating data.
+
+-- UP MIGRATION
+-- ============
+
+-- ---------------------------------------------------------------------------
+-- Part A: Schema additions (missing columns + missing tables)
+-- ---------------------------------------------------------------------------
+
+-- organizations: add missing columns
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS website text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS address text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS postcode text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS region text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS relationship_status text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS parent_org_id text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS source_table text;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS source_id text;
+
+-- contacts: add missing columns
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS department text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS preferred_contact_method text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS source_table text;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS source_id text;
+
+-- opportunities: add missing columns
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS opportunity_type text DEFAULT 'GENERAL';
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS source_table text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS source_id text;
+
+-- activities: add missing columns
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS subject text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS notes text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS next_action text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS next_action_date text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS volunteer_id text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS student_id text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS programme_id text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS source_table text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS source_id text;
+
+-- volunteers: add missing columns
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS first_name text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS last_name text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS organization_id text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS status text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}';
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS source_table text;
+ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS source_id text;
+
+-- funders: add missing columns (for provenance tracking)
+ALTER TABLE funders ADD COLUMN IF NOT EXISTS source_table text;
+ALTER TABLE funders ADD COLUMN IF NOT EXISTS source_id text;
+
+-- Create programmes table if not exists
+CREATE TABLE IF NOT EXISTS programmes (
+  id text PRIMARY KEY,
+  school_id text NOT NULL,
+  funding_opportunity_id text,
+  programme_name text NOT NULL,
+  programme_type text,
+  year_group text,
+  start_date text,
+  end_date text,
+  status text DEFAULT 'PLANNED',
+  student_count integer DEFAULT 0,
+  notes text,
+  created_by text,
+  source_table text,
+  source_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- Create students table if not exists
+CREATE TABLE IF NOT EXISTS students (
+  id text PRIMARY KEY,
+  school_id text NOT NULL,
+  programme_id text,
+  first_name text NOT NULL,
+  last_name text NOT NULL,
+  year_group text,
+  consent_status text DEFAULT 'PENDING',
+  attendance_count integer DEFAULT 0,
+  safeguarding_flag boolean DEFAULT false,
+  support_notes text,
+  notes text,
+  created_by text,
+  source_table text,
+  source_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- Create placements table if not exists
+CREATE TABLE IF NOT EXISTS placements (
+  id text PRIMARY KEY,
+  volunteer_id text NOT NULL,
+  programme_id text NOT NULL,
+  start_date text,
+  end_date text,
+  hours_delivered real DEFAULT 0,
+  status text DEFAULT 'CONFIRMED',
+  notes text,
+  created_by text,
+  source_table text,
+  source_id text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------------
+-- Part B: Data migration
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  v_owner_id text;
+  v_trust_count integer;
+  v_trust_migrated integer;
+  v_school_count integer;
+  v_school_migrated integer;
+  v_sponsor_count integer;
+  v_sponsor_migrated integer;
+  v_funder_count integer;
+  v_funder_migrated integer;
+  v_contact_count integer;
+  v_contact_migrated integer;
+  v_opp_count integer;
+  v_opp_migrated integer;
+  v_prog_count integer;
+  v_prog_migrated integer;
+  v_student_count integer;
+  v_student_migrated integer;
+  v_vol_count integer;
+  v_vol_migrated integer;
+  v_placement_count integer;
+  v_placement_migrated integer;
+  v_activity_count integer;
+  v_activity_migrated integer;
+BEGIN
+
+  -- Find the first SUPER_ADMIN to use as default owner
+  SELECT id INTO v_owner_id
+  FROM users
+  WHERE role = 'SUPER_ADMIN'
+  ORDER BY created_at ASC
+  LIMIT 1;
+
+  IF v_owner_id IS NULL THEN
+    RAISE EXCEPTION 'Cannot migrate: no SUPER_ADMIN user found. A default owner_id is required for organizations and opportunities.';
+  END IF;
+
+  RAISE NOTICE 'Using owner_id = % for migrated records', v_owner_id;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 1: yf_trusts → organizations (type = 'TRUST')
+  -- ---------------------------------------------------------------------------
+  INSERT INTO organizations (
+    id, name, type, status, location, owner_id, notes, website, phone,
+    address, postcode, region, email, relationship_status, metadata,
+    parent_org_id, created_by, source_table, source_id, created_at, updated_at
+  )
+  SELECT
+    t.id,
+    t.trust_name,
+    'TRUST',
+    CASE t.relationship_status
+      WHEN 'PROSPECT' THEN 'PROSPECT'
+      WHEN 'CONTACTED' THEN 'ACTIVE'
+      WHEN 'MEETING_HELD' THEN 'ACTIVE'
+      WHEN 'ACTIVE' THEN 'ACTIVE'
+      WHEN 'LAPSED' THEN 'INACTIVE'
+      ELSE 'PROSPECT'
+    END,
+    NULL,
+    v_owner_id,
+    t.notes,
+    t.website,
+    t.phone,
+    t.head_office_address,
+    t.postcode,
+    t.region,
+    t.email,
+    t.relationship_status,
+    jsonb_strip_nulls(jsonb_build_object(
+      'number_of_schools', t.number_of_schools,
+      'trust_type', t.trust_type,
+      'ceo', t.ceo,
+      'education_lead', t.education_lead,
+      'safeguarding_lead', t.safeguarding_lead,
+      'legacy_relationship_status', t.relationship_status
+    )),
+    NULL,
+    t.created_by,
+    'yf_trusts',
+    t.id,
+    COALESCE(t.created_at, now()),
+    COALESCE(t.updated_at, now())
+  FROM yf_trusts t
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_trust_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_trust_count FROM yf_trusts;
+  RAISE NOTICE 'yf_trusts → organizations: % migrated of % total', v_trust_migrated, v_trust_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 2: yf_schools → organizations (type = 'SCHOOL')
+  -- ---------------------------------------------------------------------------
+  INSERT INTO organizations (
+    id, name, type, status, location, owner_id, notes, website, phone,
+    address, postcode, region, email, relationship_status, metadata,
+    parent_org_id, created_by, source_table, source_id, created_at, updated_at
+  )
+  SELECT
+    s.id,
+    s.school_name,
+    'SCHOOL',
+    CASE s.relationship_status
+      WHEN 'PROSPECT' THEN 'PROSPECT'
+      WHEN 'CONTACTED' THEN 'ACTIVE'
+      WHEN 'MEETING_HELD' THEN 'ACTIVE'
+      WHEN 'ACTIVE' THEN 'ACTIVE'
+      WHEN 'LAPSED' THEN 'INACTIVE'
+      ELSE 'PROSPECT'
+    END,
+    NULL,
+    v_owner_id,
+    s.notes,
+    s.website,
+    s.phone,
+    s.address,
+    s.postcode,
+    NULL,
+    NULL,
+    s.relationship_status,
+    jsonb_strip_nulls(jsonb_build_object(
+      'phase', s.phase,
+      'headteacher', s.headteacher,
+      'dsl', s.dsl,
+      'senco', s.senco,
+      'head_of_sixth_form', s.head_of_sixth_form,
+      'careers_lead', s.careers_lead,
+      'urn', s.urn,
+      'delivery_status', s.delivery_status,
+      'legacy_relationship_status', s.relationship_status
+    )),
+    s.trust_id,
+    s.created_by,
+    'yf_schools',
+    s.id,
+    COALESCE(s.created_at, now()),
+    COALESCE(s.updated_at, now())
+  FROM yf_schools s
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_school_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_school_count FROM yf_schools;
+  RAISE NOTICE 'yf_schools → organizations: % migrated of % total', v_school_migrated, v_school_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 3: yf_sponsors → organizations (type = 'SPONSOR')
+  -- ---------------------------------------------------------------------------
+  INSERT INTO organizations (
+    id, name, type, status, location, owner_id, notes, website, phone,
+    address, postcode, region, email, relationship_status, metadata,
+    parent_org_id, created_by, source_table, source_id, created_at, updated_at
+  )
+  SELECT
+    sp.id,
+    sp.organisation_name,
+    'SPONSOR',
+    CASE sp.relationship_status
+      WHEN 'PROSPECT' THEN 'PROSPECT'
+      WHEN 'CONTACTED' THEN 'ACTIVE'
+      WHEN 'MEETING_HELD' THEN 'ACTIVE'
+      WHEN 'ACTIVE' THEN 'ACTIVE'
+      WHEN 'LAPSED' THEN 'INACTIVE'
+      ELSE 'PROSPECT'
+    END,
+    NULL,
+    v_owner_id,
+    sp.notes,
+    sp.website,
+    NULL,
+    NULL,
+    NULL,
+    sp.region,
+    NULL,
+    sp.relationship_status,
+    jsonb_strip_nulls(jsonb_build_object(
+      'sector', sp.sector,
+      'csr_priority', sp.csr_priority,
+      'employee_volunteering_interest', sp.employee_volunteering_interest,
+      'legacy_relationship_status', sp.relationship_status
+    )),
+    NULL,
+    sp.created_by,
+    'yf_sponsors',
+    sp.id,
+    COALESCE(sp.created_at, now()),
+    COALESCE(sp.updated_at, now())
+  FROM yf_sponsors sp
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_sponsor_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_sponsor_count FROM yf_sponsors;
+  RAISE NOTICE 'yf_sponsors → organizations: % migrated of % total', v_sponsor_migrated, v_sponsor_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 4: yf_sponsors → funders (type = 'CORPORATE')
+  -- ---------------------------------------------------------------------------
+  INSERT INTO funders (
+    id, name, type, funding_areas, typical_grant_min, typical_grant_max,
+    application_deadlines, relationship_owner_id, website, notes, status,
+    created_at, updated_at, source_table, source_id
+  )
+  SELECT
+    sp.id,
+    sp.organisation_name,
+    'CORPORATE',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    v_owner_id,
+    sp.website,
+    sp.notes,
+    CASE sp.relationship_status
+      WHEN 'PROSPECT' THEN 'PROSPECT'
+      WHEN 'CONTACTED' THEN 'ACTIVE'
+      WHEN 'MEETING_HELD' THEN 'ACTIVE'
+      WHEN 'ACTIVE' THEN 'ACTIVE'
+      WHEN 'LAPSED' THEN 'INACTIVE'
+      ELSE 'ACTIVE'
+    END,
+    COALESCE(sp.created_at, now()),
+    COALESCE(sp.updated_at, now()),
+    'yf_sponsors',
+    sp.id
+  FROM yf_sponsors sp
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_funder_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_funder_count FROM yf_sponsors;
+  RAISE NOTICE 'yf_sponsors → funders: % migrated of % total', v_funder_migrated, v_funder_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 5: yf_contacts → contacts
+  -- ---------------------------------------------------------------------------
+  INSERT INTO contacts (
+    id, first_name, last_name, role, email, phone, status,
+    last_contacted_at, organization_id, owner_id, title, department,
+    preferred_contact_method, metadata, created_by, source_table, source_id,
+    created_at, updated_at
+  )
+  SELECT
+    c.id,
+    c.first_name,
+    c.last_name,
+    c.job_title,
+    c.email,
+    c.phone,
+    CASE c.relationship_status
+      WHEN 'PROSPECT' THEN 'PROSPECT'
+      WHEN 'CONTACTED' THEN 'ACTIVE'
+      WHEN 'MEETING_HELD' THEN 'ACTIVE'
+      WHEN 'ACTIVE' THEN 'ACTIVE'
+      WHEN 'LAPSED' THEN 'INACTIVE'
+      ELSE 'PROSPECT'
+    END,
+    NULL,
+    c.school_id,
+    NULL,
+    NULL,
+    c.department,
+    c.preferred_contact_method,
+    jsonb_strip_nulls(jsonb_build_object(
+      'notes', c.notes,
+      'is_decision_maker', c.is_decision_maker,
+      'is_first_outreach_contact', c.is_first_outreach_contact,
+      'is_delivery_contact', c.is_delivery_contact,
+      'is_safeguarding_relevant', c.is_safeguarding_relevant,
+      'year_groups_relevant', c.year_groups_relevant,
+      'legacy_trust_id', c.trust_id,
+      'legacy_sponsor_id', c.sponsor_id
+    )),
+    c.created_by,
+    'yf_contacts',
+    c.id,
+    COALESCE(c.created_at, now()),
+    COALESCE(c.updated_at, now())
+  FROM yf_contacts c
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_contact_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_contact_count FROM yf_contacts;
+  RAISE NOTICE 'yf_contacts → contacts: % migrated of % total', v_contact_migrated, v_contact_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 6: yf_funding_opportunities → opportunities
+  -- ---------------------------------------------------------------------------
+  INSERT INTO opportunities (
+    id, name, value, stage, funder_id, organization_id, owner_id,
+    expected_close_date, actual_close_date, description, notes,
+    opportunity_type, metadata, created_by, source_table, source_id,
+    created_at, updated_at
+  )
+  SELECT
+    fo.id,
+    COALESCE(sp.organisation_name || ' — ' || fo.funding_type, 'Funding — ' || fo.funding_type),
+    fo.amount::numeric(15,2),
+    CASE fo.stage
+      WHEN 'PROSPECT' THEN 'PROSPECT'
+      WHEN 'PROPOSAL_SENT' THEN 'APPROACH'
+      WHEN 'AGREED' THEN 'AWARDED'
+      WHEN 'ACTIVE' THEN 'AWARDED'
+      WHEN 'COMPLETED' THEN 'AWARDED'
+      WHEN 'DECLINED' THEN 'DECLINED'
+      ELSE 'PROSPECT'
+    END,
+    fo.sponsor_id,
+    fo.sponsor_id,
+    v_owner_id,
+    NULL,
+    NULL,
+    NULL,
+    fo.notes,
+    fo.funding_type,
+    jsonb_strip_nulls(jsonb_build_object(
+      'renewal_date', fo.renewal_date,
+      'reporting_required', fo.reporting_required,
+      'reporting_deadline', fo.reporting_deadline
+    )),
+    fo.created_by,
+    'yf_funding_opportunities',
+    fo.id,
+    COALESCE(fo.created_at, now()),
+    COALESCE(fo.updated_at, now())
+  FROM yf_funding_opportunities fo
+  LEFT JOIN yf_sponsors sp ON sp.id = fo.sponsor_id
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_opp_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_opp_count FROM yf_funding_opportunities;
+  RAISE NOTICE 'yf_funding_opportunities → opportunities: % migrated of % total', v_opp_migrated, v_opp_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 7: yf_programmes → programmes
+  -- ---------------------------------------------------------------------------
+  INSERT INTO programmes (
+    id, school_id, funding_opportunity_id, programme_name, programme_type,
+    year_group, start_date, end_date, status, student_count, notes,
+    created_by, source_table, source_id, created_at, updated_at
+  )
+  SELECT
+    p.id,
+    p.school_id,
+    p.funding_opportunity_id,
+    p.programme_name,
+    p.programme_type,
+    p.year_group,
+    p.start_date,
+    p.end_date,
+    p.status,
+    p.student_count,
+    p.notes,
+    p.created_by,
+    'yf_programmes',
+    p.id,
+    COALESCE(p.created_at, now()),
+    COALESCE(p.updated_at, now())
+  FROM yf_programmes p
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_prog_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_prog_count FROM yf_programmes;
+  RAISE NOTICE 'yf_programmes → programmes: % migrated of % total', v_prog_migrated, v_prog_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 8: yf_students → students
+  -- ---------------------------------------------------------------------------
+  INSERT INTO students (
+    id, school_id, programme_id, first_name, last_name, year_group,
+    consent_status, attendance_count, safeguarding_flag, support_notes, notes,
+    created_by, source_table, source_id, created_at, updated_at
+  )
+  SELECT
+    st.id,
+    st.school_id,
+    st.programme_id,
+    st.first_name,
+    st.last_name,
+    st.year_group,
+    st.consent_status,
+    st.attendance_count,
+    st.safeguarding_flag,
+    st.support_notes,
+    st.notes,
+    st.created_by,
+    'yf_students',
+    st.id,
+    COALESCE(st.created_at, now()),
+    COALESCE(st.updated_at, now())
+  FROM yf_students st
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_student_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_student_count FROM yf_students;
+  RAISE NOTICE 'yf_students → students: % migrated of % total', v_student_migrated, v_student_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 9: yf_volunteers → volunteers
+  -- ---------------------------------------------------------------------------
+  INSERT INTO volunteers (
+    id, contact_id, dbs_status, dbs_checked_at, dbs_expires_at,
+    availability, skills, "references", internal_notes, first_name, last_name,
+    email, phone, organization_id, status, metadata, created_by,
+    source_table, source_id, created_at, updated_at
+  )
+  SELECT
+    v.id,
+    NULL,
+    CASE v.dbs_status
+      WHEN 'NOT_STARTED' THEN 'NOT_CHECKED'
+      ELSE v.dbs_status
+    END,
+    NULL,
+    NULL,
+    v.availability,
+    CASE WHEN v.skills IS NOT NULL THEN ARRAY[v.skills] ELSE ARRAY[]::text[] END,
+    ARRAY[]::text[],
+    v.notes,
+    v.first_name,
+    v.last_name,
+    v.email,
+    v.phone,
+    v.sponsor_id,
+    v.status,
+    jsonb_strip_nulls(jsonb_build_object(
+      'legacy_dbs_expiry', v.dbs_expiry,
+      'safeguarding_training_date', v.safeguarding_training_date,
+      'assigned_coordinator', v.assigned_coordinator
+    )),
+    v.created_by,
+    'yf_volunteers',
+    v.id,
+    COALESCE(v.created_at, now()),
+    COALESCE(v.updated_at, now())
+  FROM yf_volunteers v
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_vol_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_vol_count FROM yf_volunteers;
+  RAISE NOTICE 'yf_volunteers → volunteers: % migrated of % total', v_vol_migrated, v_vol_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 10: yf_placements → placements
+  -- ---------------------------------------------------------------------------
+  INSERT INTO placements (
+    id, volunteer_id, programme_id, start_date, end_date, hours_delivered,
+    status, notes, created_by, source_table, source_id, created_at, updated_at
+  )
+  SELECT
+    pl.id,
+    pl.volunteer_id,
+    pl.programme_id,
+    pl.start_date,
+    pl.end_date,
+    pl.hours_delivered,
+    pl.status,
+    pl.notes,
+    pl.created_by,
+    'yf_placements',
+    pl.id,
+    COALESCE(pl.created_at, now()),
+    COALESCE(pl.updated_at, now())
+  FROM yf_placements pl
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_placement_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_placement_count FROM yf_placements;
+  RAISE NOTICE 'yf_placements → placements: % migrated of % total', v_placement_migrated, v_placement_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 11: yf_activities → activities
+  -- ---------------------------------------------------------------------------
+  INSERT INTO activities (
+    id, type, summary, date, contact_id, organization_id, opportunity_id,
+    user_id, subject, notes, next_action, next_action_date, volunteer_id,
+    student_id, programme_id, metadata, created_by, source_table, source_id,
+    created_at
+  )
+  SELECT
+    a.id,
+    COALESCE(a.activity_type, 'OTHER'),
+    a.subject,
+    a.date::timestamp with time zone,
+    NULL,
+    CASE a.linked_record_type
+      WHEN 'TRUST' THEN a.linked_trust_id
+      WHEN 'SCHOOL' THEN a.linked_school_id
+      WHEN 'SPONSOR' THEN a.linked_sponsor_id
+      ELSE NULL
+    END,
+    NULL,
+    a.owner_id,
+    a.subject,
+    a.notes,
+    a.next_action,
+    a.next_action_date,
+    CASE WHEN a.linked_record_type = 'VOLUNTEER' THEN a.linked_volunteer_id ELSE NULL END,
+    CASE WHEN a.linked_record_type = 'STUDENT' THEN a.linked_student_id ELSE NULL END,
+    CASE WHEN a.linked_record_type = 'PROGRAMME' THEN a.linked_programme_id ELSE NULL END,
+    jsonb_strip_nulls(jsonb_build_object(
+      'legacy_linked_record_type', a.linked_record_type
+    )),
+    a.created_by,
+    'yf_activities',
+    a.id,
+    COALESCE(a.created_at, now())
+  FROM yf_activities a
+  ON CONFLICT (id) DO NOTHING;
+
+  GET DIAGNOSTICS v_activity_migrated = ROW_COUNT;
+  SELECT COUNT(*) INTO v_activity_count FROM yf_activities;
+  RAISE NOTICE 'yf_activities → activities: % migrated of % total', v_activity_migrated, v_activity_count;
+
+  -- ---------------------------------------------------------------------------
+  -- Step 12: Validation — count mismatch warnings
+  -- ---------------------------------------------------------------------------
+  RAISE NOTICE '---';
+  RAISE NOTICE 'VALIDATION: Row count comparison (source vs migrated)';
+  RAISE NOTICE '---';
+
+  -- Trusts
+  SELECT COUNT(*) INTO v_trust_count FROM yf_trusts;
+  SELECT COUNT(*) INTO v_trust_migrated FROM organizations WHERE source_table = 'yf_trusts';
+  IF v_trust_count != v_trust_migrated THEN
+    RAISE WARNING 'MISMATCH yf_trusts: source=%, migrated=%', v_trust_count, v_trust_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_trusts: % = %', v_trust_count, v_trust_migrated;
+  END IF;
+
+  -- Schools
+  SELECT COUNT(*) INTO v_school_count FROM yf_schools;
+  SELECT COUNT(*) INTO v_school_migrated FROM organizations WHERE source_table = 'yf_schools';
+  IF v_school_count != v_school_migrated THEN
+    RAISE WARNING 'MISMATCH yf_schools: source=%, migrated=%', v_school_count, v_school_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_schools: % = %', v_school_count, v_school_migrated;
+  END IF;
+
+  -- Sponsors → organizations
+  SELECT COUNT(*) INTO v_sponsor_count FROM yf_sponsors;
+  SELECT COUNT(*) INTO v_sponsor_migrated FROM organizations WHERE source_table = 'yf_sponsors';
+  IF v_sponsor_count != v_sponsor_migrated THEN
+    RAISE WARNING 'MISMATCH yf_sponsors→orgs: source=%, migrated=%', v_sponsor_count, v_sponsor_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_sponsors→orgs: % = %', v_sponsor_count, v_sponsor_migrated;
+  END IF;
+
+  -- Sponsors → funders
+  SELECT COUNT(*) INTO v_funder_count FROM yf_sponsors;
+  SELECT COUNT(*) INTO v_funder_migrated FROM funders f INNER JOIN yf_sponsors sp ON sp.id = f.id;
+  IF v_funder_count != v_funder_migrated THEN
+    RAISE WARNING 'MISMATCH yf_sponsors→funders: source=%, migrated=%', v_funder_count, v_funder_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_sponsors→funders: % = %', v_funder_count, v_funder_migrated;
+  END IF;
+
+  -- Contacts
+  SELECT COUNT(*) INTO v_contact_count FROM yf_contacts;
+  SELECT COUNT(*) INTO v_contact_migrated FROM contacts WHERE source_table = 'yf_contacts';
+  IF v_contact_count != v_contact_migrated THEN
+    RAISE WARNING 'MISMATCH yf_contacts: source=%, migrated=%', v_contact_count, v_contact_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_contacts: % = %', v_contact_count, v_contact_migrated;
+  END IF;
+
+  -- Opportunities
+  SELECT COUNT(*) INTO v_opp_count FROM yf_funding_opportunities;
+  SELECT COUNT(*) INTO v_opp_migrated FROM opportunities WHERE source_table = 'yf_funding_opportunities';
+  IF v_opp_count != v_opp_migrated THEN
+    RAISE WARNING 'MISMATCH yf_funding_opportunities: source=%, migrated=%', v_opp_count, v_opp_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_funding_opportunities: % = %', v_opp_count, v_opp_migrated;
+  END IF;
+
+  -- Programmes
+  SELECT COUNT(*) INTO v_prog_count FROM yf_programmes;
+  SELECT COUNT(*) INTO v_prog_migrated FROM programmes WHERE source_table = 'yf_programmes';
+  IF v_prog_count != v_prog_migrated THEN
+    RAISE WARNING 'MISMATCH yf_programmes: source=%, migrated=%', v_prog_count, v_prog_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_programmes: % = %', v_prog_count, v_prog_migrated;
+  END IF;
+
+  -- Students
+  SELECT COUNT(*) INTO v_student_count FROM yf_students;
+  SELECT COUNT(*) INTO v_student_migrated FROM students WHERE source_table = 'yf_students';
+  IF v_student_count != v_student_migrated THEN
+    RAISE WARNING 'MISMATCH yf_students: source=%, migrated=%', v_student_count, v_student_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_students: % = %', v_student_count, v_student_migrated;
+  END IF;
+
+  -- Volunteers
+  SELECT COUNT(*) INTO v_vol_count FROM yf_volunteers;
+  SELECT COUNT(*) INTO v_vol_migrated FROM volunteers WHERE source_table = 'yf_volunteers';
+  IF v_vol_count != v_vol_migrated THEN
+    RAISE WARNING 'MISMATCH yf_volunteers: source=%, migrated=%', v_vol_count, v_vol_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_volunteers: % = %', v_vol_count, v_vol_migrated;
+  END IF;
+
+  -- Placements
+  SELECT COUNT(*) INTO v_placement_count FROM yf_placements;
+  SELECT COUNT(*) INTO v_placement_migrated FROM placements WHERE source_table = 'yf_placements';
+  IF v_placement_count != v_placement_migrated THEN
+    RAISE WARNING 'MISMATCH yf_placements: source=%, migrated=%', v_placement_count, v_placement_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_placements: % = %', v_placement_count, v_placement_migrated;
+  END IF;
+
+  -- Activities
+  SELECT COUNT(*) INTO v_activity_count FROM yf_activities;
+  SELECT COUNT(*) INTO v_activity_migrated FROM activities WHERE source_table = 'yf_activities';
+  IF v_activity_count != v_activity_migrated THEN
+    RAISE WARNING 'MISMATCH yf_activities: source=%, migrated=%', v_activity_count, v_activity_migrated;
+  ELSE
+    RAISE NOTICE 'OK yf_activities: % = %', v_activity_count, v_activity_migrated;
+  END IF;
+
+  RAISE NOTICE '---';
+  RAISE NOTICE 'Migration complete. Legacy yf_* tables preserved as backup.';
+
+END $$;

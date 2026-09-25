@@ -1,0 +1,8 @@
+packages:
+  - artifacts/*
+  - lib/*
+  - scripts
+allowBuilds:
+  esbuild: true
+
+autoInstallPeers: false

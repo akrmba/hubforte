@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local env files (developer-local overrides, not committed)
+.env.local
+.env.*.local
+
+# Editor
+.DS_Store

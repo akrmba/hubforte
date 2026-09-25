@@ -1,0 +1,5 @@
+ALTER TABLE users DROP COLUMN IF EXISTS verification_token;
+ALTER TABLE users DROP COLUMN IF EXISTS status;
+ALTER TABLE users DROP COLUMN IF EXISTS totp_secret;
+ALTER TABLE users DROP COLUMN IF EXISTS totp_enabled;
+ALTER TABLE users DROP COLUMN IF EXISTS totp_pending_secret;
