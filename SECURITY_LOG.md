@@ -7,5 +7,6 @@ This file records remediation steps only. Never add credential values, connectio
 - A Neon connection string was included in a test fixture in the public snapshot.
 - Generated recovery output, including a database dump and transcript, was also in the published tree. The dump contains email-shaped and phone-shaped values, so it is treated as private data.
 - The test fixture now uses example-only credentials and a reserved example hostname. Generated recovery output is ignored and excluded from the cleaned public snapshot.
+- The public `main` history was replaced with a sanitized root snapshot. Old commit links may remain cached; request removal from GitHub Support after the password is reset.
 - The Neon database password must be reset by the maintainer. Applications using it need to be updated with the replacement stored as an environment secret.
 - Credential reset and live application checks remain pending.
